@@ -1,96 +1,92 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { getTrendingMovies, getRecommendedMovies, getImageUrl } from "@/lib/api";
-import { Movie } from "@/interfaces/movie";
+import Image from "next/image";
+import Header from "@/components/Header";
 
 export default function Dashboard() {
-  const [trending, setTrending] = useState<Movie[]>([]);
-  const [recommended, setRecommended] = useState<Movie[]>([]);
+  const [trendingMovies, setTrendingMovies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const trendingData = await getTrendingMovies();
-      const recommendedData = await getRecommendedMovies();
-      setTrending(trendingData);
-      setRecommended(recommendedData);
-    };
-    fetchData();
+    async function fetchTrending() {
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/trending/movie/day?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
+        );
+        const data = await res.json();
+        setTrendingMovies(data.results || []);
+      } catch (err) {
+        console.error("Error fetching trending:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTrending();
   }, []);
+
+  if (loading) return <p className="text-center">Loading...</p>;
+
+  const heroMovie = trendingMovies[0];
+  const rest = trendingMovies.slice(1);
 
   return (
     <main className="p-6">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-6">
-        <Link href="/" className="text-2xl font-bold text-red-500">
-          MovieReco
-        </Link>
-        <Link
-          href="/favorites"
-          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-        >
-          Favorites
-        </Link>
-      </header>
+      <Header />
 
-      {/* Trending Movies */}
-      <h2 className="text-xl font-semibold mb-4">Trending Movies</h2>
-
-      {/* Hero Movie (first trending) */}
-      {trending.length > 0 && (
-        <Link href={`/movie/${trending[0].id}`}>
-          <div className="mb-8 cursor-pointer hover:opacity-90 transition">
-            <Image
-              src={getImageUrl(trending[0].backdrop_path || trending[0].poster_path)}
-              alt={trending[0].title}
-              width={1200}
-              height={600}
-              className="rounded-xl shadow-lg object-cover w-full h-[400px]"
-            />
-            <h1 className="mt-4 text-2xl font-bold">{trending[0].title}</h1>
-            <p className="text-gray-400">{trending[0].overview}</p>
-          </div>
-        </Link>
+      {/* Hero Section */}
+      {heroMovie && (
+        <section className="mb-10">
+          <h1 className="text-3xl font-bold mb-4">Trending Now</h1>
+          <Link href={`/movie/${heroMovie.id}`}>
+            <div className="relative w-full h-[400px] rounded-lg overflow-hidden shadow-lg">
+              <Image
+                src={`https://image.tmdb.org/t/p/original${heroMovie.backdrop_path}`}
+                alt={heroMovie.title}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent p-6 flex flex-col justify-end">
+                <h2 className="text-4xl font-bold text-white mb-2">
+                  {heroMovie.title}
+                </h2>
+                <p className="text-gray-200 line-clamp-2 max-w-xl">
+                  {heroMovie.overview}
+                </p>
+              </div>
+            </div>
+          </Link>
+        </section>
       )}
 
-      {/* 4 More Trending Movies */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {trending.slice(1, 5).map((movie) => (
-          <Link key={movie.id} href={`/movie/${movie.id}`}>
-            <div className="cursor-pointer hover:scale-105 transition">
-              <Image
-                src={getImageUrl(movie.poster_path)}
-                alt={movie.title}
-                width={300}
-                height={450}
-                className="rounded-lg object-cover"
-              />
-              <h3 className="mt-2 text-sm font-medium">{movie.title}</h3>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Recommended Movies */}
-      <h2 className="text-xl font-semibold mt-10 mb-4">Recommended Movies</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {recommended.map((movie) => (
-          <Link key={movie.id} href={`/movie/${movie.id}`}>
-            <div className="cursor-pointer hover:scale-105 transition">
-              <Image
-                src={getImageUrl(movie.poster_path)}
-                alt={movie.title}
-                width={300}
-                height={450}
-                className="rounded-lg object-cover"
-              />
-              <h3 className="mt-2 text-sm font-medium">{movie.title}</h3>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Rest of Trending Movies */}
+      {rest.length > 0 && (
+        <section>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {rest.map((movie) => (
+              <div
+                key={movie.id}
+                className="bg-white shadow rounded-lg overflow-hidden"
+              >
+                <Link href={`/movie/${movie.id}`}>
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                    alt={movie.title}
+                    width={500}
+                    height={750}
+                    className="w-full h-72 object-cover"
+                  />
+                </Link>
+                <div className="p-4">
+                  <h2 className="text-lg font-semibold">{movie.title}</h2>
+                  <p className="text-sm text-gray-500">⭐ {movie.vote_average}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
